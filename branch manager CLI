@@ -190,8 +190,9 @@ func (bm *BranchManager) Run() {
 		case "9":
 			bm.addDataToBranch()
 		case "10":
-			fmt.Println(colorCyan + "\n👋 Thank you for using Branch Manager! Goodbye!" + colorReset)
-			return
+    fmt.Println(colorCyan + "\n👋 Thank you for using Branch Manager! Goodbye!\n\nDeveloper: Brian Kimutai" + colorReset)
+    return
+
 		default:
 			fmt.Println(colorRed + "❌ Invalid choice. Please try again." + colorReset)
 		}
