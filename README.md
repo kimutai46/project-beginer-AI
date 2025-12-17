@@ -1,0 +1,552 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+)
+
+// ANSI color codes for better UX
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorBlue   = "\033[34m"
+	colorPurple = "\033[35m"
+	colorCyan   = "\033[36m"
+)
+
+type BranchManager struct {
+	scanner *bufio.Scanner
+}
+
+func NewBranchManager() *BranchManager {
+	return &BranchManager{
+		scanner: bufio.NewScanner(os.Stdin),
+	}
+}
+
+func main() {
+	bm := NewBranchManager()
+	bm.Run()
+}
+
+func (bm *BranchManager) Run() {
+	bm.printWelcome()
+
+	for {
+		bm.printMenu()
+		choice := bm.getInput("Enter your choice: ")
+
+		switch choice {
+		case "1":
+			bm.listBranches()
+		case "2":
+			bm.createBranch()
+		case "3":
+			bm.switchBranch()
+		case "4":
+			bm.deleteBranch()
+		case "5":
+			bm.renameBranch()
+		case "6":
+			bm.currentBranch()
+		case "7":
+			bm.mergeBranch()
+		case "8":
+			bm.compareBranches()
+		case "9":
+			bm.addDataToBranch()
+		case "10":
+    fmt.Println(colorCyan + "\n👋 Thank you for using Branch Manager! Goodbye!\n\nDeveloper: Brian Kimutai" + colorReset)
+    return
+
+		default:
+			fmt.Println(colorRed + "❌ Invalid choice. Please try again." + colorReset)
+		}
+
+		fmt.Println() // Add spacing between operations
+	}
+}
+
+func (bm *BranchManager) printWelcome() {
+	fmt.Println(colorCyan + "╔════════════════════════════════════════╗")
+	fmt.Println("║   🌿 Git Branch Manager CLI 🌿        ║")
+	fmt.Println("║   Manage your Git branches easily     ║")
+	fmt.Println("╚════════════════════════════════════════╝" + colorReset)
+	fmt.Println()
+}
+
+func (bm *BranchManager) printMenu() {
+	fmt.Println(colorYellow + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" + colorReset)
+	fmt.Println(colorBlue + "Available Commands:" + colorReset)
+	fmt.Println("  1. 📋 List all branches")
+	fmt.Println("  2. ➕ Create a new branch")
+	fmt.Println("  3. 🔄 Switch to a branch")
+	fmt.Println("  4. 🗑️  Delete a branch")
+	fmt.Println("  5. ✏️  Rename a branch")
+	fmt.Println("  6. 📍 Show current branch")
+	fmt.Println("  7. 🔀 Merge a branch")
+	fmt.Println("  8. 🔍 Compare branches")
+	fmt.Println("  9. 📝 Add data to current branch")
+	fmt.Println("  10. 🚪 Exit")
+	fmt.Println(colorYellow + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" + colorReset)
+}
+
+func (bm *BranchManager) getInput(prompt string) string {
+	fmt.Print(colorPurple + prompt + colorReset)
+	bm.scanner.Scan()
+	return strings.TrimSpace(bm.scanner.Text())
+}
+
+func (bm *BranchManager) executeGitCommand(args ...string) (string, error) {
+	cmd := exec.Command("git", args...)
+	output, err := cmd.CombinedOutput()
+	return string(output), err
+}
+
+func (bm *BranchManager) listBranches() {
+	fmt.Println(colorCyan + "\n📋 Listing all branches..." + colorReset)
+	
+	output, err := bm.executeGitCommand("branch", "-a", "--color=always")
+	if err != nil {
+		fmt.Println(colorRed + "❌ Error: " + err.Error() + colorReset)
+		return
+	}
+
+	fmt.Println(output)
+}
+
+func (bm *BranchManager) createBranch() {
+	branchName := bm.getInput("\n➕ Enter new branch name: ")
+	
+	if branchName == "" {
+		fmt.Println(colorRed + "❌ Branch name cannot be empty!" + colorReset)
+		return
+	}
+
+	// Create and immediately switch to the new branch
+	output, err := bm.executeGitCommand("checkout", "-b", branchName)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to create branch: " + colorReset)
+		fmt.Println(colorRed + output + colorReset)
+		return
+	}
+
+	fmt.Println(colorGreen + "✅ Branch '" + branchName + "' created and checked out successfully!" + colorReset)
+}
+
+func (bm *BranchManager) switchBranch() {
+	fmt.Println(colorCyan + "\n🔄 Available branches:" + colorReset)
+	bm.listBranches()
+	
+	branchName := bm.getInput("\nEnter branch name to switch to: ")
+	
+	if branchName == "" {
+		fmt.Println(colorRed + "❌ Branch name cannot be empty!" + colorReset)
+		return
+	}
+
+	_, err := bm.executeGitCommand("checkout", branchName)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to switch branch: " + err.Error() + colorReset)
+		return
+	}
+
+	fmt.Println(colorGreen + "✅ Switched to branch '" + branchName + "'" + colorReset)
+}
+
+func (bm *BranchManager) deleteBranch() {
+	fmt.Println(colorCyan + "\n🗑️  Available branches:" + colorReset)
+	bm.listBranches()
+	
+	branchName := bm.getInput("\nEnter branch name to delete: ")
+	
+	if branchName == "" {
+		fmt.Println(colorRed + "❌ Branch name cannot be empty!" + colorReset)
+		return
+	}
+
+	confirm := bm.getInput(colorYellow + "⚠️  Are you sure you want to delete '" + branchName + "'? (y/n): " + colorReset)
+	if strings.ToLower(confirm) != "y" {
+		fmt.Println(colorBlue + "ℹ️  Deletion cancelled." + colorReset)
+		return
+	}
+
+	_, err := bm.executeGitCommand("branch", "-d", branchName)
+	if err != nil {
+		fmt.Println(colorYellow + "⚠️  Cannot delete with -d. Try force delete? (y/n): " + colorReset)
+		forceConfirm := bm.getInput("")
+		if strings.ToLower(forceConfirm) == "y" {
+			_, err := bm.executeGitCommand("branch", "-D", branchName)
+			if err != nil {
+				fmt.Println(colorRed + "❌ Failed to delete branch: " + err.Error() + colorReset)
+				return
+			}
+		} else {
+			return
+		}
+	}
+
+	fmt.Println(colorGreen + "✅ Branch '" + branchName + "' deleted successfully!" + colorReset)
+}
+
+func (bm *BranchManager) renameBranch() {
+	currentBranch, err := bm.executeGitCommand("branch", "--show-current")
+	if err != nil {
+		fmt.Println(colorRed + "❌ Error getting current branch: " + err.Error() + colorReset)
+		return
+	}
+
+	currentBranch = strings.TrimSpace(currentBranch)
+	fmt.Println(colorCyan + "\n✏️  Current branch: " + currentBranch + colorReset)
+	
+	renameType := bm.getInput("Rename current branch or another? (current/other): ")
+	
+	var oldName, newName string
+	
+	if strings.ToLower(renameType) == "current" {
+		oldName = currentBranch
+		newName = bm.getInput("Enter new name for current branch: ")
+	} else {
+		bm.listBranches()
+		oldName = bm.getInput("Enter branch name to rename: ")
+		newName = bm.getInput("Enter new name: ")
+	}
+
+	if oldName == "" || newName == "" {
+		fmt.Println(colorRed + "❌ Branch names cannot be empty!" + colorReset)
+		return
+	}
+
+	_, err = bm.executeGitCommand("branch", "-m", oldName, newName)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to rename branch: " + err.Error() + colorReset)
+		return
+	}
+
+	fmt.Println(colorGreen + "✅ Branch renamed from '" + oldName + "' to '" + newName + "'" + colorReset)
+}
+
+func (bm *BranchManager) currentBranch() {
+	output, err := bm.executeGitCommand("branch", "--show-current")
+	if err != nil {
+		fmt.Println(colorRed + "❌ Error: " + err.Error() + colorReset)
+		return
+	}
+
+	branch := strings.TrimSpace(output)
+	fmt.Println(colorGreen + "\n📍 Current branch: " + branch + colorReset)
+	
+	// Show additional info
+	info, _ := bm.executeGitCommand("log", "-1", "--oneline")
+	if info != "" {
+		fmt.Println(colorBlue + "Last commit: " + strings.TrimSpace(info) + colorReset)
+	}
+}
+
+func (bm *BranchManager) mergeBranch() {
+	currentBranch, err := bm.executeGitCommand("branch", "--show-current")
+	if err != nil {
+		fmt.Println(colorRed + "❌ Error getting current branch: " + err.Error() + colorReset)
+		return
+	}
+
+	currentBranch = strings.TrimSpace(currentBranch)
+	fmt.Println(colorCyan + "\n🔀 Current branch: " + currentBranch + colorReset)
+	fmt.Println(colorCyan + "Available branches to merge:" + colorReset)
+	bm.listBranches()
+	
+	branchToMerge := bm.getInput("\nEnter branch name to merge into current branch: ")
+	
+	if branchToMerge == "" {
+		fmt.Println(colorRed + "❌ Branch name cannot be empty!" + colorReset)
+		return
+	}
+
+	if branchToMerge == currentBranch {
+		fmt.Println(colorRed + "❌ Cannot merge a branch into itself!" + colorReset)
+		return
+	}
+
+	fmt.Println(colorYellow + "⚙️  Merging '" + branchToMerge + "' into '" + currentBranch + "'..." + colorReset)
+	
+	output, err := bm.executeGitCommand("merge", branchToMerge)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Merge failed: " + err.Error() + colorReset)
+		fmt.Println(output)
+		return
+	}
+
+	fmt.Println(colorGreen + "✅ Successfully merged '" + branchToMerge + "' into '" + currentBranch + "'" + colorReset)
+	fmt.Println(output)
+}
+
+func (bm *BranchManager) compareBranches() {
+	fmt.Println(colorCyan + "\n🔍 Compare branches" + colorReset)
+	bm.listBranches()
+	
+	branch1 := bm.getInput("\nEnter first branch name: ")
+	branch2 := bm.getInput("Enter second branch name: ")
+	
+	if branch1 == "" || branch2 == "" {
+		fmt.Println(colorRed + "❌ Branch names cannot be empty!" + colorReset)
+		return
+	}
+
+	fmt.Println(colorYellow + "\n📊 Commits in '" + branch1 + "' but not in '" + branch2 + "':" + colorReset)
+	output1, err1 := bm.executeGitCommand("log", "--oneline", branch1, "^"+branch2)
+	if err1 == nil && output1 != "" {
+		fmt.Println(output1)
+	} else {
+		fmt.Println(colorBlue + "  (none)" + colorReset)
+	}
+
+	fmt.Println(colorYellow + "\n📊 Commits in '" + branch2 + "' but not in '" + branch1 + "':" + colorReset)
+	output2, err2 := bm.executeGitCommand("log", "--oneline", branch2, "^"+branch1)
+	if err2 == nil && output2 != "" {
+		fmt.Println(output2)
+	} else {
+		fmt.Println(colorBlue + "  (none)" + colorReset)
+	}
+}
+
+func (bm *BranchManager) addDataToBranch() {
+	// Get current branch
+	currentBranch, err := bm.executeGitCommand("branch", "--show-current")
+	if err != nil {
+		fmt.Println(colorRed + "❌ Error getting current branch: " + err.Error() + colorReset)
+		return
+	}
+	currentBranch = strings.TrimSpace(currentBranch)
+	
+	fmt.Println(colorCyan + "\n📝 Add Data to Branch" + colorReset)
+	fmt.Println(colorGreen + "Current branch: " + currentBranch + colorReset)
+
+	// Get file operation choice
+	fmt.Println(colorBlue + "\nWhat would you like to do?" + colorReset)
+	fmt.Println("  1. Create a new file")
+	fmt.Println("  2. Edit an existing file")
+	fmt.Println("  3. Add multiple files")
+	
+	fileChoice := bm.getInput("Enter choice (1-3): ")
+
+	switch fileChoice {
+	case "1":
+		bm.createNewFile()
+	case "2":
+		bm.editExistingFile()
+	case "3":
+		bm.addMultipleFiles()
+	default:
+		fmt.Println(colorYellow + "⚠️  Invalid choice." + colorReset)
+		return
+	}
+
+	// Commit the changes
+	bm.commitChanges(currentBranch)
+}
+
+func (bm *BranchManager) createBranchWithData() {
+	fmt.Println(colorCyan + "\n📝 Create Branch and Add Data" + colorReset)
+	
+	// Get branch name
+	branchName := bm.getInput("Enter new branch name: ")
+	if branchName == "" {
+		fmt.Println(colorRed + "❌ Branch name cannot be empty!" + colorReset)
+		return
+	}
+
+	// Create and switch to branch
+	output, err := bm.executeGitCommand("checkout", "-b", branchName)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to create branch: " + colorReset)
+		fmt.Println(colorRed + output + colorReset)
+		return
+	}
+	fmt.Println(colorGreen + "✅ Branch '" + branchName + "' created!" + colorReset)
+
+	// Get file operation choice
+	fmt.Println(colorBlue + "\nWhat would you like to do?" + colorReset)
+	fmt.Println("  1. Create a new file")
+	fmt.Println("  2. Edit an existing file")
+	fmt.Println("  3. Add multiple files")
+	
+	fileChoice := bm.getInput("Enter choice (1-3): ")
+
+	switch fileChoice {
+	case "1":
+		bm.createNewFile()
+	case "2":
+		bm.editExistingFile()
+	case "3":
+		bm.addMultipleFiles()
+	default:
+		fmt.Println(colorYellow + "⚠️  Invalid choice. Skipping file operations." + colorReset)
+		return
+	}
+
+	// Commit the changes
+	bm.commitChanges(branchName)
+}
+
+func (bm *BranchManager) createNewFile() {
+	filename := bm.getInput("\n📄 Enter filename (e.g., notes.txt): ")
+	if filename == "" {
+		fmt.Println(colorRed + "❌ Filename cannot be empty!" + colorReset)
+		return
+	}
+
+	fmt.Println(colorBlue + "Enter file content (type 'END' on a new line to finish):" + colorReset)
+	
+	var content strings.Builder
+	for {
+		line := bm.getInput("")
+		if line == "END" {
+			break
+		}
+		content.WriteString(line + "\n")
+	}
+
+	// Write file
+	err := os.WriteFile(filename, []byte(content.String()), 0644)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to create file: " + err.Error() + colorReset)
+		return
+	}
+
+	// Stage the file
+	_, err = bm.executeGitCommand("add", filename)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to stage file: " + err.Error() + colorReset)
+		return
+	}
+
+	fmt.Println(colorGreen + "✅ File '" + filename + "' created and staged!" + colorReset)
+}
+
+func (bm *BranchManager) editExistingFile() {
+	filename := bm.getInput("\n📝 Enter filename to edit: ")
+	if filename == "" {
+		fmt.Println(colorRed + "❌ Filename cannot be empty!" + colorReset)
+		return
+	}
+
+	// Check if file exists
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		fmt.Println(colorRed + "❌ File does not exist!" + colorReset)
+		return
+	}
+
+	fmt.Println(colorBlue + "Enter content to APPEND to the file (type 'END' on a new line to finish):" + colorReset)
+	
+	var content strings.Builder
+	for {
+		line := bm.getInput("")
+		if line == "END" {
+			break
+		}
+		content.WriteString(line + "\n")
+	}
+
+	// Append to file
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to open file: " + err.Error() + colorReset)
+		return
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(content.String())
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to write to file: " + err.Error() + colorReset)
+		return
+	}
+
+	// Stage the file
+	_, err = bm.executeGitCommand("add", filename)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to stage file: " + err.Error() + colorReset)
+		return
+	}
+
+	fmt.Println(colorGreen + "✅ File '" + filename + "' updated and staged!" + colorReset)
+}
+
+func (bm *BranchManager) addMultipleFiles() {
+	fmt.Println(colorBlue + "\n📂 Enter filenames to stage (one per line, type 'DONE' when finished):" + colorReset)
+	
+	var files []string
+	for {
+		filename := bm.getInput("")
+		if filename == "DONE" {
+			break
+		}
+		if filename != "" {
+			files = append(files, filename)
+		}
+	}
+
+	if len(files) == 0 {
+		fmt.Println(colorYellow + "⚠️  No files specified." + colorReset)
+		return
+	}
+
+	// Stage all files
+	args := append([]string{"add"}, files...)
+	output, err := bm.executeGitCommand(args...)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to stage files: " + colorReset)
+		fmt.Println(colorRed + output + colorReset)
+		return
+	}
+
+	fmt.Println(colorGreen + "✅ Files staged successfully!" + colorReset)
+}
+
+func (bm *BranchManager) commitChanges(branchName string) {
+	// Check if there are staged changes
+	status, _ := bm.executeGitCommand("status", "--porcelain")
+	if strings.TrimSpace(status) == "" {
+		fmt.Println(colorYellow + "\n⚠️  No changes to commit." + colorReset)
+		return
+	}
+
+	// Show what will be committed
+	fmt.Println(colorCyan + "\n📋 Changes to be committed:" + colorReset)
+	stagedFiles, _ := bm.executeGitCommand("diff", "--cached", "--name-status")
+	fmt.Println(stagedFiles)
+
+	// Get commit message
+	commitMsg := bm.getInput("\n💬 Enter commit message: ")
+	if commitMsg == "" {
+		commitMsg = "Add data to branch " + branchName
+	}
+
+	// Commit
+	output, err := bm.executeGitCommand("commit", "-m", commitMsg)
+	if err != nil {
+		fmt.Println(colorRed + "❌ Failed to commit: " + colorReset)
+		fmt.Println(colorRed + output + colorReset)
+		return
+	}
+
+	fmt.Println(colorGreen + "\n✅ Changes committed successfully!" + colorReset)
+	fmt.Println(output)
+	
+	// Ask if user wants to push
+	push := bm.getInput("\n🚀 Push to remote? (y/n): ")
+	if strings.ToLower(push) == "y" {
+		fmt.Println(colorYellow + "⚙️  Pushing to remote..." + colorReset)
+		pushOutput, pushErr := bm.executeGitCommand("push", "-u", "origin", branchName)
+		if pushErr != nil {
+			fmt.Println(colorRed + "❌ Failed to push: " + colorReset)
+			fmt.Println(colorRed + pushOutput + colorReset)
+		} else {
+			fmt.Println(colorGreen + "✅ Pushed to remote successfully!" + colorReset)
+		}
+	}
+}
